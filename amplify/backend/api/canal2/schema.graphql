@@ -1,0 +1,47 @@
+type Planning @model @auth(rules: [{allow: public}]) {
+  id: ID!
+  date: AWSDate
+  hour: String
+  orderID: ID! @index(name: "byOrder")
+}
+
+type Product @model @auth(rules: [{allow: public}]) {
+  id: ID!
+  price: String
+  name: String
+  Campagnes: [Campagne] @hasMany(indexName: "byProduct", fields: ["id"])
+  orderID: ID @index(name: "byOrder")
+}
+
+type Order @model @auth(rules: [{allow: public}]) {
+  id: ID!
+  annonceursID: ID! @index(name: "byAnnonceurs")
+  Campagnes: [Campagne] @hasMany(indexName: "byOrder", fields: ["id"])
+  nom: String
+  Products: [Product] @hasMany(indexName: "byOrder", fields: ["id"])
+  diff: Boolean
+  attente: Boolean
+  nondiff: Boolean
+  duration: String
+  file: String
+  Plannings: [Planning] @hasMany(indexName: "byOrder", fields: ["id"])
+}
+
+type Annonceurs @model @auth(rules: [{allow: public}]) {
+  id: ID!
+  Campagnes: [Campagne] @hasMany(indexName: "byAnnonceurs", fields: ["id"])
+  Orders: [Order] @hasMany(indexName: "byAnnonceurs", fields: ["id"])
+  Nom: String
+  numero: Float
+  mail: AWSEmail
+}
+
+type Campagne @model @auth(rules: [{allow: public}]) {
+  id: ID!
+  annonceursID: ID! @index(name: "byAnnonceurs")
+  Nom: String
+  periode: String
+  orderID: ID @index(name: "byOrder")
+  productID: ID @index(name: "byProduct")
+}
+ 

@@ -1,0 +1,20 @@
+{
+  "staging": {
+    "awscloudformation": {
+      "AuthRoleName": "amplify-canal2-staging-eadac-authRole",
+      "UnauthRoleArn": "arn:aws:iam::458211071259:role/amplify-canal2-staging-eadac-unauthRole",
+      "AuthRoleArn": "arn:aws:iam::458211071259:role/amplify-canal2-staging-eadac-authRole",
+      "Region": "us-east-1",
+      "DeploymentBucketName": "amplify-canal2-staging-eadac-deployment",
+      "UnauthRoleName": "amplify-canal2-staging-eadac-unauthRole",
+      "StackName": "amplify-canal2-staging-eadac",
+      "StackId": "arn:aws:cloudformation:us-east-1:458211071259:stack/amplify-canal2-staging-eadac/4b9f36e0-427f-11ef-ae74-0affe5277f59",
+      "AmplifyAppId": "d1e1br9po3sg69"
+    },
+    "categories": {
+      "auth": {
+        "canal2": {}
+      }
+    }
+  }
+}

@@ -1,113 +1,334 @@
+"use client"
 import Image from "next/image";
+import { useState, useEffect } from "react";
+import { listAnnonceurs, listCampagnes, listProducts } from '../src/graphql/queries';
+import search_icon from "../assets/search.png";
+import { Amplify } from 'aws-amplify';
+import { generateClient } from 'aws-amplify/api';
+import awsconfig from '../src/aws-exports';
+import CreateCampagne from "@/components/createCampagne";
+import CreateProduct from "@/components/createProduct";
+import CreateAdvertiser from "@/components/createAdvertiser";
+import CreateOrder from "@/components/createOrder";
+import CampagneRow from "@/components/CampagneRow";
+import { CampagneType, Order } from "@/type";
+
+Amplify.configure(awsconfig);
+const client = generateClient();
+
+ 
+
+const initialCampagneState: CampagneType = {
+  id: "",
+  annonceursID: "",
+  Nom: "",
+  periode: "",
+  orderID: "",
+  productID: "",
+  createdAt: "",
+  updatedAt: "",
+  __typename: ""
+};
 
 export default function Home() {
+  const [loading, setLoading] = useState(false);
+  const [Campagnes, setCampagnes] = useState<CampagneType[]>([]);
+  const [Advertisers, setAdvertisers] = useState([]);
+  const [Orders, setOrders] = useState<Order>([]);
+  const [Products, setProducts] = useState([]);
+  const [createProduct, setCreateProduct] = useState(false);
+  const [createAdvertiser, setCreateAdvertiser] = useState(false);
+  const [createOrder, setCreateOrder] = useState(false);
+  const [isOpen, setIsOpen] = useState(false);
+  const [editMode, setEditMode] = useState<boolean>(false);
+  const [editValue, setEditValue] = useState<CampagneType>(initialCampagneState); // Initialize with initialCampagneState
+  const [newCampagne, setNewCampagne] = useState<CampagneType>({
+    id: "",
+    annonceur: "",
+    Nom: "",
+    commande: 0,
+    produit: "",
+    periode: "",
+    createdAt: "",
+    updatedAt: "",
+    __typename: ""
+  });
+  
+  const openModal = () => setIsOpen(true);
+  const closeModal = () => setIsOpen(false);
+  const handleEdit = (campagne: CampagneType) => {
+    setEditValue(campagne);
+    setEditMode(true);
+  };
+
+  const handleNewCampagneChange = (fieldName: keyof CampagneType, value: any) => {
+    setNewCampagne({ ...newCampagne, [fieldName]: value });
+  };
+  
+  const handleInputChange = (fieldName: keyof CampagneType, value: any) => {
+    setEditValue({ ...editValue, [fieldName]: value });
+  };
+
+  const handleSave = async () => {
+    try {
+      await updateCampagneFunction();
+     } catch (error) {
+      console.error('Error saving Campagne:', error);
+      // Handle error state or inform the user
+    }finally{
+      setEditMode(false);
+    }
+  };
+
+
+  const getCampagnes = async () => {
+    if (loading) {
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const response = await client.graphql({
+        query: listCampagnes,
+        variables: { limit: 100 } // Adjust limit as needed
+      });
+
+      const { data } = response;
+      console.log(data)
+      if (data && data.listCampagnes && data.listCampagnes.items) {
+        // Filter out deleted items and sort by date
+        const noneDeleted = data.listCampagnes.items.filter((item: any) => !item._deleted);
+        const sortedCampagnes = noneDeleted.slice().sort((a, b) => new Date(b.date) - new Date(a.date));
+        setCampagnes(sortedCampagnes);
+      }
+    } catch (error) {
+      console.log('Error fetching Campagnes data:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+  const getAdvertisers = async () => {
+    if (loading) {
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const response = await client.graphql({
+        query: listAnnonceurs,
+        variables: { limit: 1000000000 } // Adjust variables as needed
+      });
+
+      const { data } = response;
+      if (data) {
+        const noneDeleted = data.listAnnonceurs.items.filter(item => !item._deleted);
+        setAdvertisers(noneDeleted);
+        console.log(noneDeleted)
+      }
+    } catch (error) {
+      console.log('Error fetching Campagnes data:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const getOrder = async () => {
+    if (loading) {
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const response = await client.graphql({
+        query: listOrders,
+        variables: { limit: 1000000000 } // Adjust variables as needed
+      });
+
+      const { data } = response;
+      if (data) {
+        const noneDeleted = data.listOrders.items.filter(item => !item._deleted);
+        setOrders(noneDeleted);
+       }
+       console.log(data)
+       console.log("data")
+
+    } catch (error) {
+      console.log('Error fetching Campagnes data:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const getProducts = async () => {
+    if (loading) {
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const response = await client.graphql({
+        query: listProducts,
+        variables: { limit: 1000000000 } // Adjust variables as needed
+      });
+
+      const { data } = response;
+      if (data) {
+        const noneDeleted = data.listProducts.items.filter(item => !item._deleted);
+        setProducts(noneDeleted);
+       }
+    } catch (error) {
+      console.log('Error fetching Campagnes data:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+
+  useEffect(() => {
+    getCampagnes();
+    getAdvertisers();
+    getOrder();
+    getProducts()
+    console.log("start")
+  }, []);
+
+  const getAdvertisersName = (id: string) :string => {
+    const advertiser = Advertisers.find((item) => item.id === id);
+    return advertiser ? advertiser.Nom : "Unknown";
+  };
+
+  const getOrdersName = (id: string) :string => {
+    const order = Orders.find((item) => item.id === id);
+    console.log(order)
+    return order ? order.nom : "Unknown";
+  };
+
+  const getProductName = (id: string) :string => {
+    const product = Products.find((item) => item.id === id);
+    return product ? product.name : "Unknown";
+  };
+  
   return (
-    <main className="flex min-h-screen flex-col items-center justify-between p-24">
-      <div className="z-10 w-full max-w-5xl items-center justify-between font-mono text-sm lg:flex">
-        <p className="fixed left-0 top-0 flex w-full justify-center border-b border-gray-300 bg-gradient-to-b from-zinc-200 pb-6 pt-8 backdrop-blur-2xl dark:border-neutral-800 dark:bg-zinc-800/30 dark:from-inherit lg:static lg:w-auto  lg:rounded-xl lg:border lg:bg-gray-200 lg:p-4 lg:dark:bg-zinc-800/30">
-          Get started by editing&nbsp;
-          <code className="font-mono font-bold">app/page.tsx</code>
-        </p>
-        <div className="fixed bottom-0 left-0 flex h-48 w-full items-end justify-center bg-gradient-to-t from-white via-white dark:from-black dark:via-black lg:static lg:size-auto lg:bg-none">
-          <a
-            className="pointer-events-none flex place-items-center gap-2 p-8 lg:pointer-events-auto lg:p-0"
-            href="https://vercel.com?utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            By{" "}
-            <Image
-              src="/vercel.svg"
-              alt="Vercel Logo"
-              className="dark:invert"
-              width={100}
-              height={24}
-              priority
-            />
-          </a>
+    <main className="p-4">
+      <h1 className="text-3xl mb-4">Campagnes publicitaires</h1>
+      <header className="w-full p-4 flex items-center h-24 justify-between">
+        <div className="w-64 h-11 rounded-sm bg-white flex justify-between items-center">
+          <input className="w-3/4 p-2 rounded-sm outline-none" placeholder="Search..." />
+          <Image src={search_icon} alt="Search Icon" width={32} height={32} />
         </div>
+        <div className="w-auto flex justify-around items-center">
+          <button className="bg-green-600 w-48 rounded-sm text-white h-11 mr-5" onClick={openModal}>+ Nouvelle campagne</button>
+          <button className="bg-green-600 w-48 rounded-sm text-white h-11 mr-5" onClick={()=>{setCreateProduct(true)}}>+ Produits</button>
+          <button className="bg-green-600 w-48 rounded-sm text-white h-11 mr-5" onClick={()=>{setCreateOrder(true)}}>+ commande</button>
+          <button className="bg-green-600 w-48 rounded-sm text-white h-11 mr-5" onClick={()=>{setCreateAdvertiser(true)}}>+ Annonceur</button>
+          <button className="bg-green-600 w-11 rounded-sm text-white h-11"></button>
+        </div>
+      </header>
+
+      <div className="flex justify-around">
+        {/* Your other dashboard cards */}
       </div>
 
-      <div className="relative z-[-1] flex place-items-center before:absolute before:h-[300px] before:w-full before:-translate-x-1/2 before:rounded-full before:bg-gradient-radial before:from-white before:to-transparent before:blur-2xl before:content-[''] after:absolute after:-z-20 after:h-[180px] after:w-full after:translate-x-1/3 after:bg-gradient-conic after:from-sky-200 after:via-blue-200 after:blur-2xl after:content-[''] before:dark:bg-gradient-to-br before:dark:from-transparent before:dark:to-blue-700 before:dark:opacity-10 after:dark:from-sky-900 after:dark:via-[#0141ff] after:dark:opacity-40 sm:before:w-[480px] sm:after:w-[240px] before:lg:h-[360px]">
-        <Image
-          className="relative dark:drop-shadow-[0_0_0.3rem_#ffffff70] dark:invert"
-          src="/next.svg"
-          alt="Next.js Logo"
-          width={180}
-          height={37}
-          priority
-        />
+      <div className="mt-12 rounded-sm">
+        <table className="min-w-full bg-white border rounded-sm">
+          <thead>
+            <tr>
+              <th className="py-2 px-4 border">CODE</th>
+              <th className="py-2 px-4 border">ANNONCEUR</th>
+              <th className="py-2 px-4 border">NOM</th>
+              <th className="py-2 px-4 border">COMMANDES</th>
+              <th className="py-2 px-4 border">PRODUIT</th>
+              <th className="py-2 px-4 border">PERIODE</th>
+              <th className="py-2 px-4 border">ACTION</th>
+            </tr>
+          </thead>
+          <tbody>
+              {loading ? (
+                  <tr>
+                    <td colSpan={7} className="py-2 px-4 border text-center">Loading...</td>
+                  </tr>
+                ) : (
+                  Campagnes.map((campagne) => (
+                    <CampagneRow
+                      key={campagne.id}
+                      campagne={campagne}
+                      Advertisers={Advertisers}
+                      Orders={Orders}
+                      Products={Products}
+                      getAdvertisersName={getAdvertisersName}
+                      getOrdersName={getOrdersName}
+                      getProductName={getProductName}
+                      setCampagnes={setCampagnes}
+                      campagneList={Campagnes}
+                    />
+                  ))
+                )}
+          </tbody>
+        </table>
       </div>
+      <CreateCampagne
+        isOpen={isOpen}
+        onClose={closeModal}
+        Advertisers={Advertisers}
+        Orders={Orders}
+        Products={Products}
+        Campagnes={Campagnes}
+        setCampagnes={setCampagnes}
+      />    
+      <CreateProduct
+        isOpen={createProduct}
+        onClose={()=>{setCreateProduct(false)}}
+      />
 
-      <div className="mb-32 grid text-center lg:mb-0 lg:w-full lg:max-w-5xl lg:grid-cols-4 lg:text-left">
-        <a
-          href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-          className="group rounded-lg border border-transparent px-5 py-4 transition-colors hover:border-gray-300 hover:bg-gray-100 hover:dark:border-neutral-700 hover:dark:bg-neutral-800/30"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <h2 className="mb-3 text-2xl font-semibold">
-            Docs{" "}
-            <span className="inline-block transition-transform group-hover:translate-x-1 motion-reduce:transform-none">
-              -&gt;
-            </span>
-          </h2>
-          <p className="m-0 max-w-[30ch] text-sm opacity-50">
-            Find in-depth information about Next.js features and API.
-          </p>
-        </a>
+      <CreateAdvertiser
+        isOpen={createAdvertiser}
+        onClose={()=>{setCreateAdvertiser(false)}}
+      />
 
-        <a
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          className="group rounded-lg border border-transparent px-5 py-4 transition-colors hover:border-gray-300 hover:bg-gray-100 hover:dark:border-neutral-700 hover:dark:bg-neutral-800/30"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <h2 className="mb-3 text-2xl font-semibold">
-            Learn{" "}
-            <span className="inline-block transition-transform group-hover:translate-x-1 motion-reduce:transform-none">
-              -&gt;
-            </span>
-          </h2>
-          <p className="m-0 max-w-[30ch] text-sm opacity-50">
-            Learn about Next.js in an interactive course with&nbsp;quizzes!
-          </p>
-        </a>
+      <CreateOrder
+        Advertisers={Advertisers}
+        isOpen={createOrder}
+        onClose={()=>{setCreateOrder(false)}}
+        setOrders={setOrders}
+        Orders={Orders}
+        
+      />
 
-        <a
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-          className="group rounded-lg border border-transparent px-5 py-4 transition-colors hover:border-gray-300 hover:bg-gray-100 hover:dark:border-neutral-700 hover:dark:bg-neutral-800/30"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <h2 className="mb-3 text-2xl font-semibold">
-            Templates{" "}
-            <span className="inline-block transition-transform group-hover:translate-x-1 motion-reduce:transform-none">
-              -&gt;
-            </span>
-          </h2>
-          <p className="m-0 max-w-[30ch] text-sm opacity-50">
-            Explore starter templates for Next.js.
-          </p>
-        </a>
-
-        <a
-          href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-          className="group rounded-lg border border-transparent px-5 py-4 transition-colors hover:border-gray-300 hover:bg-gray-100 hover:dark:border-neutral-700 hover:dark:bg-neutral-800/30"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <h2 className="mb-3 text-2xl font-semibold">
-            Deploy{" "}
-            <span className="inline-block transition-transform group-hover:translate-x-1 motion-reduce:transform-none">
-              -&gt;
-            </span>
-          </h2>
-          <p className="m-0 max-w-[30ch] text-balance text-sm opacity-50">
-            Instantly deploy your Next.js site to a shareable URL with Vercel.
-          </p>
-        </a>
-      </div>
+      
     </main>
   );
 }
+
+
+const listOrders = /* GraphQL */ `
+  query ListOrders(
+    $filter: ModelOrderFilterInput
+    $limit: Int
+    $nextToken: String
+  ) {
+    listOrders(filter: $filter, limit: $limit, nextToken: $nextToken) {
+        items {
+        Products {
+          items {
+            name
+            orderID
+            id
+            price
+          }
+        }
+        annonceursID
+        attente
+        createdAt
+        diff
+        duration
+        file
+        id
+        nom
+        nondiff
+      }
+    }
+  }
+`;
+
+
+ 
