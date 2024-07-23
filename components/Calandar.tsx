@@ -20,7 +20,7 @@ interface CalendarProps {
   onClose: () => void;
   Orders: Order[];
   Planning: Planning[];
-  setPlanning: (planning: Planning[]) => void; // Updated type
+  setPlanning: (planning: Planning[]) => void; 
 }
 
 type HourFormat = `${number}H${number}`;

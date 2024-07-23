@@ -254,6 +254,7 @@ const getAnnonceurs = /* GraphQL */ `
       Nom
       numero
       mail
+      admin
       Campagnes {
         items {
           Nom

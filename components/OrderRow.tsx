@@ -18,6 +18,7 @@ interface OrderRowProps {
   products: Product[];
   OrderList: Order[];
   setOrders: React.Dispatch<React.SetStateAction<Order[]>>;
+  admin: boolean;
 }
 
 const OrderRow: React.FC<OrderRowProps> = ({
@@ -25,6 +26,7 @@ const OrderRow: React.FC<OrderRowProps> = ({
   products,
   OrderList,
   setOrders,
+  admin,
 }) => {
   const [editMode, setEditMode] = useState<boolean>(false);
   const [editValue, setEditValue] = useState<Order>(order);
@@ -33,6 +35,11 @@ const OrderRow: React.FC<OrderRowProps> = ({
   const handleInputChange = (fieldName: keyof Order, value: any) => {
     setEditValue({ ...editValue, [fieldName]: value });
   };
+
+  const isProductAlreadyLinked = (productID: string) => {
+    return OrderList.some(o => o.id !== order.id && o.Products.items.some(p => p.id === productID));
+  };
+
   const updateOrderFunction = async () => {
     setLoading(true);
     try {
@@ -45,41 +52,51 @@ const OrderRow: React.FC<OrderRowProps> = ({
         attente: editValue.attente,
         nondiff: editValue.nondiff,
       };
-  
-      if (editValue.productID !== order.Products.items[0].id) {
+
+      const currentProductID = order.Products.items[0]?.id;
+      const newProductID = editValue.productID;
+
+      if (currentProductID && newProductID && currentProductID !== newProductID) {
+        // Check if the new product is already linked to another order
+        if (isProductAlreadyLinked(newProductID)) {
+          if (!confirm("The selected product is already linked to another order. Do you still want to proceed?")) {
+            setLoading(false);
+            return;
+          }
+        }
+
         // Detach the previous product
         await client.graphql({
           query: updateProduct,
           variables: {
             input: {
-              id: order.Products.items[0].id,
+              id: currentProductID,
               orderID: null,
             },
           },
         });
-  
-        // Attach the new product
-        await client.graphql({
-          query: updateProduct,
-          variables: {
-            input: {
-              id: editValue.productID,
-              orderID: order.id,
-            },
-          },
-        });
       }
-  
-      console.log('Update Input:', input);
+
+      // Attach the new product
+      await client.graphql({
+        query: updateProduct,
+        variables: {
+          input: {
+            id: newProductID,
+            orderID: order.id,
+          },
+        },
+      });
+
       const result = await client.graphql({
         query: updateOrder,
         variables: { input },
       });
       console.log('Order updated successfully:', result);
-  
+
       // Find the new product details
-      const newProduct = products.find(item => item.id === editValue.productID);
-  
+      const newProduct = products.find(item => item.id === newProductID);
+
       // Update the order in the OrderList, including the new product details
       const updatedOrders = OrderList.map((item) =>
         item.id === order.id ? { ...item, ...editValue, Products: { items: [newProduct] } } : item
@@ -91,7 +108,7 @@ const OrderRow: React.FC<OrderRowProps> = ({
       setLoading(false);
     }
   };
-  
+
   const handleSave = async () => {
     try {
       await updateOrderFunction();
@@ -173,7 +190,7 @@ const OrderRow: React.FC<OrderRowProps> = ({
       </td>
       <td className="py-2 px-4 border">
         {!editMode && (order.diff ? 'Oui' : 'Non')}
-        {editMode && (
+        {editMode && admin && (
           <input
             type="checkbox"
             className="w-full p-2 rounded-sm outline-none"
@@ -181,10 +198,11 @@ const OrderRow: React.FC<OrderRowProps> = ({
             onChange={(e) => handleInputChange('diff', e.target.checked)}
           />
         )}
+        {editMode && !admin && (order.diff ? 'Oui' : 'Non')}
       </td>
       <td className="py-2 px-4 border">
         {!editMode && (order.attente ? 'Oui' : 'Non')}
-        {editMode && (
+        {editMode && admin && (
           <input
             type="checkbox"
             className="w-full p-2 rounded-sm outline-none"
@@ -192,10 +210,11 @@ const OrderRow: React.FC<OrderRowProps> = ({
             onChange={(e) => handleInputChange('attente', e.target.checked)}
           />
         )}
+        {editMode && !admin && (order.attente ? 'Oui' : 'Non')}
       </td>
       <td className="py-2 px-4 border">
         {!editMode && (order.nondiff ? 'Oui' : 'Non')}
-        {editMode && (
+        {editMode && admin && (
           <input
             type="checkbox"
             className="w-full p-2 rounded-sm outline-none"
@@ -203,6 +222,7 @@ const OrderRow: React.FC<OrderRowProps> = ({
             onChange={(e) => handleInputChange('nondiff', e.target.checked)}
           />
         )}
+        {editMode && !admin && (order.nondiff ? 'Oui' : 'Non')}
       </td>
       <td className="py-2 px-4 border">
         {!editMode && (
@@ -231,4 +251,3 @@ const OrderRow: React.FC<OrderRowProps> = ({
 };
 
 export default OrderRow;
- 

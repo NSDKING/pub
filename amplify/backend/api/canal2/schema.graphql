@@ -34,6 +34,7 @@ type Annonceurs @model @auth(rules: [{allow: public}]) {
   Nom: String
   numero: Float
   mail: AWSEmail
+  admin: Boolean
 }
 
 type Campagne @model @auth(rules: [{allow: public}]) {

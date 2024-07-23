@@ -6,7 +6,13 @@
 
 /* eslint-disable */
 import * as React from "react";
-import { Button, Flex, Grid, TextField } from "@aws-amplify/ui-react";
+import {
+  Button,
+  Flex,
+  Grid,
+  SwitchField,
+  TextField,
+} from "@aws-amplify/ui-react";
 import { fetchByPath, getOverrideProps, validateField } from "./utils";
 import { generateClient } from "aws-amplify/api";
 import { createAnnonceurs } from "../graphql/mutations";
@@ -26,21 +32,25 @@ export default function AnnonceursCreateForm(props) {
     Nom: "",
     numero: "",
     mail: "",
+    admin: false,
   };
   const [Nom, setNom] = React.useState(initialValues.Nom);
   const [numero, setNumero] = React.useState(initialValues.numero);
   const [mail, setMail] = React.useState(initialValues.mail);
+  const [admin, setAdmin] = React.useState(initialValues.admin);
   const [errors, setErrors] = React.useState({});
   const resetStateValues = () => {
     setNom(initialValues.Nom);
     setNumero(initialValues.numero);
     setMail(initialValues.mail);
+    setAdmin(initialValues.admin);
     setErrors({});
   };
   const validations = {
     Nom: [],
     numero: [],
     mail: [{ type: "Email" }],
+    admin: [],
   };
   const runValidationTasks = async (
     fieldName,
@@ -71,6 +81,7 @@ export default function AnnonceursCreateForm(props) {
           Nom,
           numero,
           mail,
+          admin,
         };
         const validationResponses = await Promise.all(
           Object.keys(validations).reduce((promises, fieldName) => {
@@ -136,6 +147,7 @@ export default function AnnonceursCreateForm(props) {
               Nom: value,
               numero,
               mail,
+              admin,
             };
             const result = onChange(modelFields);
             value = result?.Nom ?? value;
@@ -166,6 +178,7 @@ export default function AnnonceursCreateForm(props) {
               Nom,
               numero: value,
               mail,
+              admin,
             };
             const result = onChange(modelFields);
             value = result?.numero ?? value;
@@ -192,6 +205,7 @@ export default function AnnonceursCreateForm(props) {
               Nom,
               numero,
               mail: value,
+              admin,
             };
             const result = onChange(modelFields);
             value = result?.mail ?? value;
@@ -206,6 +220,33 @@ export default function AnnonceursCreateForm(props) {
         hasError={errors.mail?.hasError}
         {...getOverrideProps(overrides, "mail")}
       ></TextField>
+      <SwitchField
+        label="Admin"
+        defaultChecked={false}
+        isDisabled={false}
+        isChecked={admin}
+        onChange={(e) => {
+          let value = e.target.checked;
+          if (onChange) {
+            const modelFields = {
+              Nom,
+              numero,
+              mail,
+              admin: value,
+            };
+            const result = onChange(modelFields);
+            value = result?.admin ?? value;
+          }
+          if (errors.admin?.hasError) {
+            runValidationTasks("admin", value);
+          }
+          setAdmin(value);
+        }}
+        onBlur={() => runValidationTasks("admin", admin)}
+        errorMessage={errors.admin?.errorMessage}
+        hasError={errors.admin?.hasError}
+        {...getOverrideProps(overrides, "admin")}
+      ></SwitchField>
       <Flex
         justifyContent="space-between"
         {...getOverrideProps(overrides, "CTAFlex")}

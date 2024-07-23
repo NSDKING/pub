@@ -26,6 +26,7 @@ export interface Advertiser {
     numero: string;
     Nom: string;
     id: string;
+    admin:boolean;
     Campagnes: {
       items: CampagneType[];
     };

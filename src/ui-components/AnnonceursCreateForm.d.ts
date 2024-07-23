@@ -5,7 +5,7 @@
  **************************************************************************/
 
 import * as React from "react";
-import { GridProps, TextFieldProps } from "@aws-amplify/ui-react";
+import { GridProps, SwitchFieldProps, TextFieldProps } from "@aws-amplify/ui-react";
 export declare type EscapeHatchProps = {
     [elementHierarchy: string]: Record<string, unknown>;
 } | null;
@@ -25,11 +25,13 @@ export declare type AnnonceursCreateFormInputValues = {
     Nom?: string;
     numero?: number;
     mail?: string;
+    admin?: boolean;
 };
 export declare type AnnonceursCreateFormValidationValues = {
     Nom?: ValidationFunction<string>;
     numero?: ValidationFunction<number>;
     mail?: ValidationFunction<string>;
+    admin?: ValidationFunction<boolean>;
 };
 export declare type PrimitiveOverrideProps<T> = Partial<T> & React.DOMAttributes<HTMLDivElement>;
 export declare type AnnonceursCreateFormOverridesProps = {
@@ -37,6 +39,7 @@ export declare type AnnonceursCreateFormOverridesProps = {
     Nom?: PrimitiveOverrideProps<TextFieldProps>;
     numero?: PrimitiveOverrideProps<TextFieldProps>;
     mail?: PrimitiveOverrideProps<TextFieldProps>;
+    admin?: PrimitiveOverrideProps<SwitchFieldProps>;
 } & EscapeHatchProps;
 export declare type AnnonceursCreateFormProps = React.PropsWithChildren<{
     overrides?: AnnonceursCreateFormOverridesProps | undefined | null;
