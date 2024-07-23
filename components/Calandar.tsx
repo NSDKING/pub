@@ -47,25 +47,29 @@ const Calendar: React.FC<CalendarProps> = ({ isOpen, onClose, Orders, Planning, 
   const createPlanningFunction = async () => {
     if (!selectedDay || !selectedHour || !orderID) return;
 
+    // Check if the selected day is in the past
+    const today = new Date();
+    if (selectedDay < today.setHours(0, 0, 0, 0)) {
+      alert('You cannot add planning for a date that has already passed.');
+      return;
+    }
+
     const awsDate = convertToAWSDateFormat(selectedDay);
-    console.log("start")
     const input = {
       date: awsDate,
       hour: selectedHour,
       orderID: orderID,
     };
 
-    console.log(input)
     try {
       setLoading(true);
       const result = await client.graphql({
         query: createPlanning,
         variables: { input: input },
       });
-      console.log('Planning created:', result);
       const newPlanning = result.data.createPlanning;
       setPlanning((prev) => [...prev, newPlanning]);
-      handleBackToCalendar()
+      handleBackToCalendar();
     } catch (error) {
       console.error('Error creating planning:', error);
     } finally {

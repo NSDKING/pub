@@ -222,6 +222,7 @@ export const getAnnonceurs = /* GraphQL */ `
   query GetAnnonceurs($id: ID!) {
     getAnnonceurs(id: $id) {
       id
+      admin
       Campagnes {
         nextToken
         __typename

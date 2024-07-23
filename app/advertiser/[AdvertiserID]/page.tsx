@@ -1,4 +1,4 @@
-"use client"
+"use client";
 import React, { useEffect, useState } from 'react';
 import { Amplify } from 'aws-amplify';
 import { generateClient } from 'aws-amplify/api';
@@ -13,6 +13,9 @@ import { listPlannings, listProducts } from '@/src/graphql/queries';
 import CreateOrder from '@/components/createOrder';
 import CreateOrderID from '@/components/createOrderID';
 import Calendar from '@/components/Calandar';
+import { Authenticator } from "@aws-amplify/ui-react";
+import '@aws-amplify/ui-react/styles.css';
+import { getCurrentUser } from "aws-amplify/auth";
 
 Amplify.configure(awsconfig);
 const client = generateClient();
@@ -20,29 +23,26 @@ const client = generateClient();
 export default function AdvertiserPage({ params }) {
     const { AdvertiserID } = params;
     const [loading, setLoading] = useState<boolean>(false);
-    const [data, setData]= useState<Advertiser>()
+    const [data, setData] = useState<Advertiser>();
     const [Orders, setOrders] = useState<Order[]>([]);
     const [Planning, setPlanning] = useState<Planning[]>([]);
-    const [Campagnes, setCampagnes]= useState()
-    const [calendar, setCalendar]= useState<boolean>(false)
+    const [Campagnes, setCampagnes] = useState<CampagneType[]>();
+    const [calendar, setCalendar] = useState<boolean>(false);
     const [createProduct, setCreateProduct] = useState(false);
     const [Products, setProducts] = useState([]);
     const [createOrder, setCreateOrder] = useState(false);
+    const [admin, setAdmin] = useState<boolean>(false);
 
-    const getPlanningList = ( ) => {
+    const getPlanningList = () => {
         let planList: Planning[] = [];
-      
         Orders.forEach((order) => {
-          if (order.Plannings && order.Plannings.items) {
-            planList = planList.concat(order.Plannings.items);
-          }
+            if (order.Plannings && order.Plannings.items) {
+                planList = planList.concat(order.Plannings.items);
+            }
         });
-        
-        setPlanning(planList)
+        setPlanning(planList);
+    };
 
-      };
-      
-    
     const getAdvertisersData = async () => {
         if (loading) {
             return;
@@ -52,68 +52,64 @@ export default function AdvertiserPage({ params }) {
         try {
             const response = await client.graphql({
                 query: getAnnonceurs,
-                variables: { 
-                    id: AdvertiserID, 
-                    limit: 10000
-                }
+                variables: { id: AdvertiserID, limit: 10000 }
             });
             console.log(response);
-            setData(response.data.getAnnonceurs)
-            setCampagnes(response.data.getAnnonceurs.Campagnes.items)
-            setOrders(response.data.getAnnonceurs.Orders.items)
-          } catch (error) {
+            setData(response.data.getAnnonceurs);
+            setCampagnes(response.data.getAnnonceurs.Campagnes.items);
+            setOrders(response.data.getAnnonceurs.Orders.items);
+        } catch (error) {
             console.log('Error fetching advertisers data:', error);
         } finally {
             setLoading(false);
         }
     };
-    
-    
+
     const getProducts = async () => {
         if (loading) {
-        return;
+            return;
         }
 
         setLoading(true);
         try {
-        const response = await client.graphql({
-            query: listProducts,
-            variables: { limit: 1000000000 } // Adjust variables as needed
-        });
+            const response = await client.graphql({
+                query: listProducts,
+                variables: { limit: 1000000000 } // Adjust variables as needed
+            });
 
-        const { data } = response;
-        if (data) {
-            const noneDeleted = data.listProducts.items.filter(item => !item._deleted);
-            setProducts(noneDeleted);
-        }
+            const { data } = response;
+            if (data) {
+                const noneDeleted = data.listProducts.items.filter(item => !item._deleted);
+                setProducts(noneDeleted);
+            }
         } catch (error) {
-        console.log('Error fetching Campagnes data:', error);
+            console.log('Error fetching Products data:', error);
         } finally {
-        setLoading(false);
+            setLoading(false);
         }
     };
-    
+
     const getPlanning = async () => {
         if (loading) {
-        return;
+            return;
         }
 
         setLoading(true);
         try {
-        const response = await client.graphql({
-            query: listPlannings,
-            variables: { limit: 1000000000 } // Adjust variables as needed
-        });
+            const response = await client.graphql({
+                query: listPlannings,
+                variables: { limit: 1000000000 } // Adjust variables as needed
+            });
 
-        const { data } = response;
-        if (data) {
-            const noneDeleted = data.listPlannings.items.filter(item => !item._deleted);
-            setPlanning(noneDeleted);
-        }
+            const { data } = response;
+            if (data) {
+                const noneDeleted = data.listPlannings.items.filter(item => !item._deleted);
+                setPlanning(noneDeleted);
+            }
         } catch (error) {
-        console.log('Error fetching Campagnes data:', error);
+            console.log('Error fetching Plannings data:', error);
         } finally {
-        setLoading(false);
+            setLoading(false);
         }
     };
 
@@ -131,117 +127,138 @@ export default function AdvertiserPage({ params }) {
         const nondiffItems = Orders.filter(item => item.nondiff === true);
         return nondiffItems.length;
     };
-    
-    useEffect(() => {
-        if (AdvertiserID) {
-            getAdvertisersData();
+
+    const syncUser = async () => {
+        try {
+            const { username, userId } = await getCurrentUser();
+
+            const response = await client.graphql({
+                query: getAnnonceurs,
+                variables: { id: userId }
+            });
+
+            if (response.data?.getAnnonceurs.admin) {
+                setAdmin(true);
+            } else {
+                setAdmin(false);
+            }
+        } catch (error) {
+            console.log("Error fetching or creating user data:", error);
         }
-        getProducts()
-        getPlanning()
-        getPlanningList()
+    };
+
+    useEffect(() => {
+        const fetchData = async () => {
+            if (AdvertiserID) {
+                await getAdvertisersData();
+            }
+            await getProducts();
+            await getPlanning();
+            getPlanningList();
+            await syncUser(); // Check admin status
+        };
+        fetchData();
     }, [AdvertiserID]);
 
     return (
         <main>
-            {loading && <p>Loading...</p>}
-            {data && (
-                <div>
-                    <div className='flex justify-center flex-col items-center mt-14'>
-                        {/* Render your data here */}
-                        <h1 className='text-3xl font-bold'>{data.Nom}</h1>
-                        <div className='flex justify-center items-center  '>
-                            <p className='ml-5'> {data.numero}</p>
-                            <p className='ml-5'> {data.mail}</p>
+            {admin ? (
+                <>
+                    {loading && <p>Loading...</p>}
+                    {data && (
+                        <div>
+                            <div className='flex justify-center flex-col items-center mt-14'>
+                                {/* Render your data here */}
+                                <h1 className='text-3xl font-bold'>{data.Nom}</h1>
+                                <div className='flex justify-center items-center'>
+                                    <p className='ml-5'>{data.numero}</p>
+                                    <p className='ml-5'>{data.mail}</p>
+                                </div>
+                            </div>
+                            <header className="w-full p-4 flex items-center h-24 justify-between">
+                                <div className="w-64 h-11 rounded-sm bg-white flex justify-between items-center">
+                                    <input className="w-3/4 p-2 rounded-sm outline-none" placeholder="Search..." />
+                                    <Image src={search_icon} alt="Search Icon" width={32} height={32} />
+                                </div>
+                                <div className="w-auto flex justify-around items-center">
+                                    <button className="bg-green-600 w-48 rounded-sm text-white h-11 mr-5 flex items-center justify-center" onClick={() => { setCalendar(true) }}>
+                                        <Image src={planning} alt="Planning Icon" width={21} height={17} className="mr-2" />
+                                        Planning
+                                    </button>
+                                    <button className="bg-green-600 w-48 rounded-sm text-white h-11 mr-5" onClick={() => { setCreateOrder(true) }}>+ commande</button>
+                                    <button className="bg-green-600 w-48 rounded-sm text-white h-11 mr-5" onClick={() => { setCreateProduct(true) }}>+ Produit</button>
+                                    <button className="bg-green-600 w-11 rounded-sm text-white h-11"></button>
+                                </div>
+                            </header>
+                            <div className='flex justify-around'>
+                                <div className='w-80 h-36 p-3 bg-white flex flex-col justify-around rounded-sm'>
+                                    <p className='text-gray-600'>Total Commandés</p>
+                                    <h1 className='font-bold text-2xl'>{Orders.length}</h1>
+                                </div>
+                                <div className='w-80 h-36 p-3 bg-white flex flex-col justify-around rounded-sm'>
+                                    <p className='text-gray-600'>Total diffusés</p>
+                                    <h1 className='font-bold text-2xl'>{diffNumber()}</h1>
+                                </div>
+                                <div className='w-80 h-36 p-3 bg-white flex flex-col justify-around rounded-sm'>
+                                    <p className='text-gray-600'>Total attentes</p>
+                                    <h1 className='font-bold text-2xl'>{attNumber()}</h1>
+                                </div>
+                                <div className='w-80 h-36 p-3 bg-white flex flex-col justify-around rounded-sm'>
+                                    <p className='text-gray-600'>Total non diffusés</p>
+                                    <h1 className='font-bold text-2xl'>{nondiffNumber()}</h1>
+                                </div>
+                            </div>
+                            <div className="mt-12 rounded-sm">
+                                <table className="min-w-full bg-white border rounded-sm">
+                                    <thead>
+                                        <tr>
+                                            <th className="py-2 px-4 border">PRODUIT</th>
+                                            <th className="py-2 px-4 border">TITRE DU MESSAGE</th>
+                                            <th className="py-2 px-4 border">DUREES (S)</th>
+                                            <th className="py-2 px-4 border">FILE</th>
+                                            <th className="py-2 px-4 border">DIFFUSE</th>
+                                            <th className="py-2 px-4 border">ATTENTE</th>
+                                            <th className="py-2 px-4 border">NONDIFFUSE</th>
+                                            <th className="py-2 px-4 border">ACTION</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {Orders.map((order) => (
+                                            <OrderRow
+                                                key={order.id}
+                                                order={order}
+                                                products={Products}
+                                                OrderList={Orders}
+                                                setOrders={setOrders}
+                                            />
+                                        ))}
+                                    </tbody>
+                                </table>
+                            </div>
+                            <CreateProduct
+                                isOpen={createProduct}
+                                onClose={() => { setCreateProduct(false) }}
+                            />
+                            <CreateOrderID
+                                AdvertisersID={AdvertiserID}
+                                isOpen={createOrder}
+                                onClose={() => { setCreateOrder(false) }}
+                                setOrders={setOrders}
+                                products={Products}
+                                Orders={Orders}
+                            />
+                            <Calendar
+                                isOpen={calendar}
+                                onClose={() => { setCalendar(false) }}
+                                Orders={Orders}
+                                Planning={Planning}
+                                setPlanning={setPlanning}
+                            />
                         </div>
-                    </div>
-                    <header className="w-full p-4 flex items-center h-24 justify-between">
-                        <div className="w-64 h-11 rounded-sm bg-white flex justify-between items-center">
-                        <input className="w-3/4 p-2 rounded-sm outline-none" placeholder="Search..." />
-                        <Image src={search_icon} alt="Search Icon" width={32} height={32} />
-                        
-                        </div>
-                        <div className="w-auto flex justify-around items-center">
-                        <button className="bg-green-600 w-48 rounded-sm text-white h-11 mr-5 flex items-center justify-center" onClick={()=>{setCalendar(true)}}>
-                            <Image src={planning} alt="planning Icon" width={21} height={17} className="mr-2" />
-                            Planning
-                        </button>
-                        <button className="bg-green-600 w-48 rounded-sm text-white h-11 mr-5" onClick={()=>{setCreateOrder(true)}}>+ commande</button>
-                        <button className="bg-green-600 w-48 rounded-sm text-white h-11 mr-5" onClick={()=>{setCreateProduct(true)}}>+ Produit</button>        
-                                       
-                         <button className="bg-green-600 w-11 rounded-sm text-white h-11"></button>
-                        </div>
-                    </header>
-                    <div className='flex justify-around'>
-                        <div className='w-80 h-36 p-3 bg-white flex flex-col justify-around rounded-sm'>
-                            <p className='text-gray-600'>Total Commandés</p>
-                            <h1 className='font-bold text-2xl'>{Orders.length}</h1>
-                        </div>
-                        <div className='w-80 h-36 p-3 bg-white flex flex-col justify-around rounded-sm'>
-                            <p className='text-gray-600'>Total diffusés</p>
-                            <h1 className='font-bold text-2xl'>{diffNumber()}</h1>
-                        </div>
-                        <div className='w-80 h-36 p-3 bg-white flex flex-col justify-around rounded-sm'>
-                            <p className='text-gray-600'>Total attentes</p>
-                            <h1 className='font-bold text-2xl'>{attNumber()}</h1>
-                        </div>
-                        <div className='w-80 h-36 p-3 bg-white flex flex-col justify-around rounded-sm'>
-                            <p className='text-gray-600'>Total non diffusés</p>
-                            <h1 className='font-bold text-2xl'>{nondiffNumber()}</h1>
-                        </div>
-
-                    </div>
-
-                    <div className="mt-12 rounded-sm">
-                        <table className="min-w-full bg-white border rounded-sm">
-                        <thead>
-                            <tr>
-                                <th className="py-2 px-4 border">PRODUIT</th>
-                                <th className="py-2 px-4 border">TITRE DU MESSAGE</th>
-                                <th className="py-2 px-4 border">DUREES (S)</th>
-                                <th className="py-2 px-4 border">FILE</th>
-                                <th className="py-2 px-4 border">DIFFUSE</th>
-                                <th className="py-2 px-4 border">ATTENTE</th>
-                                <th className="py-2 px-4 border">NONDIFFUSE</th>
-                                <th className="py-2 px-4 border">ACTION</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {Orders.map((order) => (
-                                <OrderRow
-                                    order={order}
-                                    products={Products}
-                                    OrderList={Orders}
-                                    setOrders={setOrders}
-                                 />
-                            ))}
-                        </tbody>
-                        </table>
-                    </div>
-                    <CreateProduct
-                        isOpen={createProduct}
-                        onClose={()=>{setCreateProduct(false)}}
-                    />
-                    <CreateOrderID
-                        AdvertisersID={AdvertiserID}
-                        isOpen={createOrder}
-                        onClose={()=>{setCreateOrder(false)}}
-                        setOrders={setOrders}
-                        products={Products}
-                        Orders={Orders}
-   
-                    />
-                    <Calendar
-                        isOpen={calendar}
-                        onClose={()=>{setCalendar(false)}}
-                        Orders={Orders}
-                        Planning={Planning}
-                        setPlanning={setPlanning}
-                    />
-
-                </div>
- 
-
-                 
+                    )}
+                </>
+            ) : (
+                <p>You do not have permission to view this page. Please <a href="/login" className="text-blue-500">login</a> as an admin.</p>
             )}
         </main>
     );
@@ -286,8 +303,8 @@ const getAnnonceurs = /* GraphQL */ `
               hour
               id
               orderID
+            }
           }
-         }
         }
       }
     }
